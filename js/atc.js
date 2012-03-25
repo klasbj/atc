@@ -47,7 +47,7 @@ function airport(_id,_txtpos,_rwys) {
     this.rwys = _rwys;
 }
 
-function runway(_mod,_x1,_y1,_len,_dir) {
+function runway(_mod,_x1,_y1,_len,_dir,_ilsnear,_ilsfar) {
     this.mod = _mod;
     this.x1 = _x1;
     this.y1 = _y1;
@@ -56,13 +56,15 @@ function runway(_mod,_x1,_y1,_len,_dir) {
     this.draw_dir = (_dir + 270) * Math.PI / 180;
     this.x2 = _x1 + _len*Math.cos(this.draw_dir);
     this.y2 = _y1 + _len*Math.sin(this.draw_dir);
+    this.ils_near = _ilsnear;
+    this.ils_far = _ilsfar;
 }
 
-var essb = new airport("ESSB", {x:68,y:61.5} ,[new runway('', 66.8, 63.0, 0.9, 300.0)]);
-var essa = new airport("ESSA", {x:68,y:44}, [new runway('L',65.0,45.0,1.8,5), // ILS 1R,1L,19L,19R,26
-        new runway('R',66.5,45.5,1.5,5),
-        new runway('',65.8,43.6,1.5,71)]);
-var esow = new airport("ESOW", {x:17,y:49.8}, [new runway('', 24.4, 50.4, 1.4, 8)]); // ILS 19
+var essb = new airport("ESSB", {x:68,y:61.5} ,[new runway('', 66.8, 63.0, 0.9, 300.0, true, true)]);
+var essa = new airport("ESSA", {x:68,y:44}, [new runway('L',65.0,45.0,1.8,5, true, true), // ILS 1R,1L,19L,19R,26
+        new runway('R',66.5,45.5,1.5,5, true, true),
+        new runway('',65.8,43.6,1.5,71, false, true)]);
+var esow = new airport("ESOW", {x:17,y:49.8}, [new runway('', 24.4, 50.4, 1.4, 8, false, true)]); // ILS 19
 var airports = [essb,essa,esow];
 
 function dist(x1,y1,x2,y2) {
@@ -250,11 +252,45 @@ function draw_airport(a) {
     context.fillText(a.id, a.txtpos.x/nmPerPixel, a.txtpos.y/nmPerPixel);
 
     for (var j = 0; j < a.rwys.length; j = j + 1) {
+        context.strokeStyle = AIRPORT_COLOR;
+        context.lineWidth = 2;
+        var rwy = a.rwys[j];
+        var x1 = rwy.x1/nmPerPixel, y1 = rwy.y1/nmPerPixel;
+        var x2 = rwy.x2/nmPerPixel, y2 = rwy.y2/nmPerPixel;
         context.beginPath();
-        rwy = a.rwys[j];
-        context.moveTo(rwy.x1/nmPerPixel,rwy.y1/nmPerPixel);
-        context.lineTo(rwy.x2/nmPerPixel,rwy.y2/nmPerPixel);
+        context.moveTo(x1,y1);
+        context.lineTo(x2,y2);
         context.stroke();
+
+
+        context.lineWidth = 1;
+        context.strokeStyle = "#007f00";
+        var dir = rwy.draw_dir;
+        var mid_ils_dist = 10 / nmPerPixel;
+        var side_ils_dist = 12 / nmPerPixel;
+        var dx1 = side_ils_dist*Math.cos(dir+Math.PI/32), dy1 = side_ils_dist*Math.sin(dir+Math.PI/32);
+        var dx2 = mid_ils_dist*Math.cos(dir), dy2 = mid_ils_dist*Math.sin(dir);
+        var dx3 = side_ils_dist*Math.cos(dir-Math.PI/32), dy3 = side_ils_dist*Math.sin(dir-Math.PI/32);
+        if (rwy.ils_near) {
+            context.beginPath();
+            context.moveTo(x1,y1);
+            context.lineTo(x1-dx1, y1-dy1);
+            context.lineTo(x1-dx2, y1-dy2);
+            context.lineTo(x1-dx3, y1-dy3);
+            context.closePath();
+            context.stroke();
+        }
+
+        if (rwy.ils_far) {
+            context.beginPath();
+            context.moveTo(x2,y2);
+            context.lineTo(x2+dx1, y2+dy1);
+            context.lineTo(x2+dx2, y2+dy2);
+            context.lineTo(x2+dx3, y2+dy3);
+            context.closePath();
+            context.stroke();
+        }
+
     }
     context.lineWidth = 1;
 }
