@@ -4,11 +4,26 @@ var STATE_NORMAL       = 0,
     STATE_ALERT        = 1,
     STATE_UNCONTOLLED  = 2;
 
+var NAVAID_VOR      = 0,
+    NAVAID_DME      = 1,
+    NAVAID_VORDME    = 2;
+
 var BG = "#000",
-    PLANE_COLORS = ["#0f0","#f00","#00f"];
+    PLANE_COLORS = ["#0f0","#f00","#00f"],
+    NAVAID_COLORS = ["#1f1f1f", "#1f1f1f","#1f1f1f"] ;
+
+function navaid(_id,_x,_y,_type,_textloc) {
+    this.id = _id;
+    this.x = _x;
+    this.y = _y;
+    this.textloc = _textloc;
+    this.type = _type;
+}
+
+var navaids = [new navaid("ARL",320,240,NAVAID_VORDME,'l')];
 
 /*
- * let each pixel denote 1/50 nm
+ * let each pixel denote 1/10 nm
  */
 function plane(_id,_x,_y,_alt,_dir,_speed) {
     this.id = _id;
@@ -33,7 +48,7 @@ function plane(_id,_x,_y,_alt,_dir,_speed) {
         d = this.draw_dir();
         dlen = (this.speed/3600.)   // nm per second
             * dt                    // nm since last
-            * 50.;                  // 1/10 nm since last
+            * 10.;                  // 1/10 nm since last
         this.x = this.x + dlen * Math.cos(d);
         this.y = this.y + dlen * Math.sin(d);
 
@@ -144,10 +159,13 @@ function draw() {
     context.fillStyle = "#000000";
     context.strokeStyle = "#00ff00";
     context.lineCap="butt";
-    context.font="9px Arial";
+    context.font="bold 9px Arial";
+    context.textBaseline = "middle";
     context.lineWidth = 1;
 
     drawworld();
+    
+    context.font="9px Arial";
     for (i = 0; i < planes.length; i = i + 1) {
         drawplane(planes[i]);
     }
@@ -158,6 +176,9 @@ function draw() {
 function drawworld() {
     context.fillstyle="#000000";
     context.fillRect(0,0,640,480);  // clear the canvas
+    for (i = 0; i < navaids.length; i = i + 1) {
+        draw_navaid(navaids[i]);
+    }
 }
 
 function drawtextarea() {
@@ -165,6 +186,59 @@ function drawtextarea() {
     context.fillRect(0, canvas.height-15, 640, 15);
     context.fillStyle="#00ff00";
     context.fillText("Target direction: " + planes[0].target_dir, 10, canvas.height-5);
+}
+
+function draw_vor(v) {
+    context.beginPath();
+    context.moveTo(v.x-5.5, v.y);
+    context.lineTo(v.x-3, v.y+5.5);
+    context.lineTo(v.x+3, v.y+5.5);
+    context.lineTo(v.x+5.5, v.y);
+    context.lineTo(v.x+3, v.y-5.5);
+    context.lineTo(v.x-3, v.y-5.5);
+    context.closePath();
+    context.stroke();
+
+    context.beginPath();
+    context.arc(v.x,v.y,1,0,2*Math.PI);
+    context.fill();
+}
+
+function draw_dme(v) {
+    var dx = v.x - 5.5, dy = v.y - 5.5;
+    context.strokeRect(dx,dy,11,11);
+    
+    context.beginPath();
+    context.arc(v.x,v.y,1,0,2*Math.PI);
+    context.fill();
+}
+
+function draw_navaid(v) {
+    context.strokeStyle = NAVAID_COLORS[v.type];
+    context.fillStyle = NAVAID_COLORS[v.type];
+    switch (v.type) {
+        case NAVAID_VORDME:
+            draw_dme(v);
+            draw_vor(v);
+            break;
+        case NAVAID_DME:
+            draw_dme(v);
+        case NAVAID_VOR:
+            draw_vor(v);
+        default:
+            break;
+    }
+
+    tx = v.x;
+    ty = v.y;
+    if (v.textloc == 'l') {
+        tw = context.measureText(v.id).width;
+        tx = tx - tw - 10;
+    } else {
+        tx = tx + 8;
+    }
+
+    context.fillText(v.id, tx, ty);
 }
 
 function drawplane(p) {
