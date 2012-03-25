@@ -13,6 +13,8 @@ var BG = "#000",
     NAVAID_COLORS = ["#1994d1", "#1994d1","#1994d1"],
     AIRPORT_COLOR = "#7f7f7f";
 
+var nmPerPixel = 1/5.;
+
 function navaid(_id,_x,_y,_type,_textloc) {
     this.id = _id;
     this.x = _x;
@@ -21,7 +23,7 @@ function navaid(_id,_x,_y,_type,_textloc) {
     this.type = _type;
 }
 
-var navaids = [new navaid("ARL",320,240,NAVAID_VORDME,'l')];
+var navaids = [new navaid("ARL",65.0,44.0,NAVAID_VORDME,'l')];
 var lookup_navaid = {};
 
 function airport(_id,_rwys) {
@@ -40,9 +42,10 @@ function runway(_mod,_x1,_y1,_len,_dir) {
     this.y2 = _y1 + _len*Math.sin(this.draw_dir);
 }
 
-var airports = [new airport("ESSA", [new runway('L',320,250,18,5),
-        new runway('R',335,255,15,5),
-        new runway('',328,236,15,71)])];
+var essa = new airport("ESSA", {x:68,y:44}, [new runway('L',65.0,45.0,1.8,5), // ILS 1R,1L,19L,19R,26
+        new runway('R',66.5,45.5,1.5,5),
+        new runway('',65.8,43.6,1.5,71)]);
+var airports = [essa];
 
 function dist(x1,y1,x2,y2) {
     dx = x2-x1;
@@ -73,24 +76,23 @@ function plane(_id,_x,_y,_alt,_dir,_speed) {
     /* dt is time difference in ss */
     this.updatepos = function(dt) {
         /* update the position of the plane */
-        d = this.draw_dir();
-        dlen = (this.speed/3600.)   // nm per second
-            * dt                    // nm since last
-            * 10.;                  // 1/10 nm since last
+        var d = this.draw_dir();
+        var dlen = (this.speed/3600.)   // nm per second
+            * dt;                   // nm since last
         this.x = this.x + dlen * Math.cos(d);
         this.y = this.y + dlen * Math.sin(d);
 
         /* update the plane's altitude */
-        dalt = this.target_alt - this.alt;
+        var dalt = this.target_alt - this.alt;
         if (Math.abs(dalt) > eps) {
-            sdalt = dalt / Math.abs(dalt);
+            var sdalt = dalt / Math.abs(dalt);
             this.alt = this.alt + sdalt * Math.min(sdalt*dalt, (this.fpm/60.) * dt);
         }
 
         /* update the plane's direction */
-        ddir = this.target_dir - this.dir;
+        var ddir = this.target_dir - this.dir;
         if (Math.abs(ddir) > eps) {
-            sddir = ddir / Math.abs(ddir);
+            var sddir = ddir / Math.abs(ddir);
             if (Math.abs(ddir) > 180) {
                 ddir = this.target_dir - sddir*360 - this.dir;
             }
@@ -100,9 +102,9 @@ function plane(_id,_x,_y,_alt,_dir,_speed) {
         }
 
         /* update the plane's speed */
-        dspd = this.target_speed - this.speed;
+        var dspd = this.target_speed - this.speed;
         if (Math.abs(dspd) > eps) {
-            sdspd = dspd / Math.abs(dspd);
+            var sdspd = dspd / Math.abs(dspd);
             this.speed = this.speed + sdspd * Math.min(sdspd*dspd, this.acceleration * dt);
         }
     }
@@ -112,7 +114,7 @@ function plane(_id,_x,_y,_alt,_dir,_speed) {
     }
 
     this.alt_string = function() {
-        str = "" + Math.round(this.target_alt/100);
+        var str = "" + Math.round(this.target_alt/100);
         if (this.target_alt > this.alt) {
             str = str + "+";
         } else if (this.target_alt < this.alt) {
@@ -168,17 +170,17 @@ function onload() {
 }
 
 function init() {
-    planes.push(new plane('a', 50,50,10000,100,100));
+    planes.push(new plane('a', 15.0,15.0,10000,100,100));
     canvas = document.getElementById("game");
     context = canvas.getContext('2d');
 
-    for (i = 0; i < navaids.length; i = i + 1) {
+    for (var i = 0; i < navaids.length; i = i + 1) {
         lookup_navaid[navaids[i].id] = i;
     }
 }
 
 function step() {
-    for (i = 0; i < planes.length; i = i + 1) {
+    for (var i = 0; i < planes.length; i = i + 1) {
         planes[i].updatepos(1000 / 1000.);
     }
 
@@ -198,7 +200,7 @@ function draw() {
     drawworld();
     
     context.font="9px Arial";
-    for (i = 0; i < planes.length; i = i + 1) {
+    for (var i = 0; i < planes.length; i = i + 1) {
         drawplane(planes[i]);
     }
 
@@ -207,27 +209,33 @@ function draw() {
 
 function drawworld() {
     context.fillstyle="#000000";
-    context.fillRect(0,0,640,480);  // clear the canvas
+    context.fillRect(0,0,canvas.width,canvas.height);  // clear the canvas
 
-    
-    for (i = 0; i < airports.length; i = i + 1) {
+    for (var i = 0; i < airports.length; i = i + 1) {
         draw_airport(airports[i]);
+        asdads = i;
     }
     context.lineWidth = 1;
 
-    for (i = 0; i < navaids.length; i = i + 1) {
+    for (var i = 0; i < navaids.length; i = i + 1) {
         draw_navaid(navaids[i]);
     }
 }
 
+var asdads = "";
+
 function draw_airport(a) {
     context.lineWidth = 2;
     context.strokeStyle = AIRPORT_COLOR;
-    for (i = 0; i < a.rwys.length; i = i + 1) {
+    context.fillStyle = AIRPORT_COLOR;
+
+    context.fillText(a.id, a.txtpos.x/nmPerPixel, a.txtpos.y/nmPerPixel);
+
+    for (var j = 0; j < a.rwys.length; j = j + 1) {
         context.beginPath();
-        rwy = a.rwys[i];
-        context.moveTo(rwy.x1,rwy.y1);
-        context.lineTo(rwy.x2,rwy.y2);
+        rwy = a.rwys[j];
+        context.moveTo(rwy.x1/nmPerPixel,rwy.y1/nmPerPixel);
+        context.lineTo(rwy.x2/nmPerPixel,rwy.y2/nmPerPixel);
         context.stroke();
     }
     context.lineWidth = 1;
@@ -235,34 +243,47 @@ function draw_airport(a) {
 
 function drawtextarea() {
     context.fillStyle="#000000";
-    context.fillRect(0, canvas.height-15, 640, 15);
+    context.fillRect(0, canvas.height-15, canvas.width, 15);
     context.fillStyle="#00ff00";
-    context.fillText("Target direction: " + planes[0].target_dir + "; dist: " + dist(planes[0].x,planes[0].y, navaids[lookup_navaid["ARL"]].x, navaids[lookup_navaid["ARL"]].y), 10, canvas.height-5);
+    context.fillText("Target direction: " + planes[0].target_dir + "; " + asdads, 10, canvas.height-5);
 }
 
 function draw_vor(v) {
+    x = v.x / nmPerPixel;
+    y = v.y / nmPerPixel;
     context.beginPath();
-    context.moveTo(v.x-5.5, v.y);
-    context.lineTo(v.x-3, v.y+5.5);
-    context.lineTo(v.x+3, v.y+5.5);
-    context.lineTo(v.x+5.5, v.y);
-    context.lineTo(v.x+3, v.y-5.5);
-    context.lineTo(v.x-3, v.y-5.5);
+    context.moveTo(x-5.5, y);
+    context.lineTo(x-3, y+5.5);
+    context.lineTo(x+3, y+5.5);
+    context.lineTo(x+5.5, y);
+    context.lineTo(x+3, y-5.5);
+    context.lineTo(x-3, y-5.5);
     context.closePath();
     context.stroke();
 
     context.beginPath();
-    context.arc(v.x,v.y,1,0,2*Math.PI);
+    context.arc(x,y,1,0,2*Math.PI);
     context.fill();
 }
 
 function draw_dme(v) {
-    var dx = v.x - 5.5, dy = v.y - 5.5;
+    var x = v.x/nmPerPixel, y = v.y/nmPerPixel;
+    var dx = x - 5.5, dy = y - 5.5;
     context.strokeRect(dx,dy,11,11);
     
     context.beginPath();
-    context.arc(v.x,v.y,1,0,2*Math.PI);
+    context.arc(x,y,1,0,2*Math.PI);
     context.fill();
+}
+
+function draw_fix(v) {
+    var x = v.x/nmPerPixel, y = v.y/nmPerPixel;
+    context.beginPath();
+    context.moveTo(x-7,y+4);
+    context.lineTo(x+7,y+4);
+    context.lineTo(x,y-7);
+    context.closePath();
+    context.stroke();
 }
 
 function draw_navaid(v) {
@@ -275,17 +296,21 @@ function draw_navaid(v) {
             break;
         case NAVAID_DME:
             draw_dme(v);
+            break;
         case NAVAID_VOR:
             draw_vor(v);
+            break;
+        case NAVAID_FIX:
+            draw_fix(v);
+            break;
         default:
             break;
     }
 
-    tx = v.x;
-    ty = v.y;
+    var tx = v.x/nmPerPixel;
+    var ty = v.y/nmPerPixel;
     if (v.textloc == 'l') {
-        tw = context.measureText(v.id).width;
-        tx = tx - tw - 10;
+        tx = tx - context.measureText(v.id).width - 10;
     } else {
         tx = tx + 8;
     }
@@ -294,13 +319,14 @@ function draw_navaid(v) {
 }
 
 function drawplane(p) {
-    var dx = p.x-2.5, dy = p.y-2.5;
+    var x = p.x/nmPerPixel, y = p.y/nmPerPixel;
+    var dx = x-2.5, dy = y-2.5;
     var sticklen = 20;
     var radang=p.draw_dir();
-    var lx1 = p.x + 5*Math.cos(radang),
-        ly1 = p.y + 5*Math.sin(radang),
-        lx2 = p.x + sticklen*Math.cos(radang),
-        ly2 = p.y + sticklen*Math.sin(radang);
+    var lx1 = x + 5*Math.cos(radang),
+        ly1 = y + 5*Math.sin(radang),
+        lx2 = x + sticklen*Math.cos(radang),
+        ly2 = y + sticklen*Math.sin(radang);
 
     context.strokeStyle = PLANE_COLORS[p.state];
     context.fillStyle = PLANE_COLORS[p.state];
@@ -311,17 +337,18 @@ function drawplane(p) {
     context.lineTo(lx2,ly2);
     context.stroke();
 
-    txt = p.alt_string();
+    var txt = p.alt_string();
     
-    tw = context.measureText(txt).width;
-    th = context.measureText(txt).height;
+    var tw = context.measureText(txt).width;
+    var th = context.measureText(txt).height;
+    var tx,ty;
 
     if (p.dir < 180) {
-        tx = p.x - tw - 5;
+        tx = x - tw - 5;
     } else {
-        tx = p.x + 5;
+        tx = x + 5;
     }
-    ty = p.y;
+    ty = y;
 
     context.fillText(p.id, tx, ty-11);
     context.fillText(txt, tx, ty);
