@@ -66,9 +66,10 @@ function runway(_mod,_x1,_y1,_len,_dir,_ilsnear,_ilsfar) {
 }
 
 var essb = new airport("ESSB", {x:68,y:71.5} ,[new runway('', 66.8, 73.0, 0.9, 300.0, true, true)]);
-var essa = new airport("ESSA", {x:68,y:54}, [new runway('L',65.0,55.0,1.8,5, true, true), // ILS 1R,1L,19L,19R,26
-        new runway('R',66.5,55.5,1.5,5, true, true),
-        new runway('',65.8,53.6,1.5,71, false, true)]);
+var essa = new airport("ESSA", {x:68,y:54}, [
+        new runway('L', 65.0,   55.0,   1.8,    5,  true,   true), // ILS 1R,1L,19L,19R,26
+        new runway('R', 66.5,   55.5,   1.5,    5,  true,   true),
+        new runway('',  65.8,   53.6,   1.5,    71, false,  true)]);
 var esow = new airport("ESOW", {x:17,y:59.8}, [new runway('', 24.4, 60.4, 1.4, 8, false, true)]); // ILS 19
 var airports = [essb,essa,esow];
 
@@ -78,10 +79,52 @@ function dist(x1,y1,x2,y2) {
     return Math.sqrt(dx*dx + dy*dy);
 }
 
+function cmd_hdg(plane, args) {
+    /* set the proper heading target */
+    plane.target_dir = args;
+}
+
+function cmd_hdg_fin(plane, args) {
+    return false; // can never end
+}
+
+function cmd_direct(plane, args) {
+    /* find the proper angle to the target */
+    var px = plane.x, py = plane.y;
+    var tx = args.x, ty = args.y;
+    
+    var ang = Math.round(Math.atan2(ty-py, tx-px)*180./Math.PI);
+    ang = (ang + 360 + 90) % 360;   // normalize the angle and turn it into 
+
+    plane.target_dir = ang;
+}
+
+function cmd_direct_fin(plane, args) {
+    return dist(plane.x, plane.y, args.x, args.y) < 1.; // done when within half a mile of target
+}
+
+var cmd_fcns = [ [cmd_hdg,cmd_direct], [cmd_hdg_fin, cmd_direct_fin] ];
+
+var CMD_HDG = 0,
+    CMD_DIRECT = 1;
+
+function cmd(_type, _args) {
+    this.type = _type;
+    this.args = _args;
+
+    this.execute = function(plane) {
+        cmd_fcns[0][this.type](plane, this.args);
+    }
+
+    this.finished = function(plane) {
+        return cmd_fcns[1][this.type](plane, this.args);
+    }
+}
+
 /*
  * let each pixel denote 1/10 nm
  */
-function plane(_id,_x,_y,_alt,_dir,_speed) {
+function plane(_id,_x,_y,_alt,_dir,_speed,_cmds) {
     this.id = _id;
     this.x = _x;
     this.y = _y;
@@ -91,6 +134,8 @@ function plane(_id,_x,_y,_alt,_dir,_speed) {
     this.target_alt = _alt;
     this.target_dir = _dir;
     this.target_speed = _speed;
+
+    this.cmds = _cmds;
 
     this.fpm = 3000;
     this.turnrate = 360/120;    // two minute turn
@@ -106,6 +151,16 @@ function plane(_id,_x,_y,_alt,_dir,_speed) {
             * dt;                   // nm since last
         this.x = this.x + dlen * Math.cos(d);
         this.y = this.y + dlen * Math.sin(d);
+
+        /* update the ap cmd */
+        if (this.cmds.length == 0) {
+            this.cmds.push(new cmd(CMD_HDG, this.target_dir));
+        }
+
+        this.cmds[0].execute(this);
+        if (this.cmds[0].finished(this)) {
+            this.cmds.shift();
+        }
 
         /* update the plane's altitude */
         var dalt = this.target_alt - this.alt;
@@ -195,17 +250,31 @@ function onload() {
 }
 
 function init() {
-    planes.push(new plane('a', 15.0,15.0,10000,100,100));
     canvas = document.getElementById("game");
     context = canvas.getContext('2d');
 
     for (var i = 0; i < navaids.length; i = i + 1) {
         lookup_navaid[navaids[i].id] = i;
     }
+    
+    planes.push(new plane('a', 15.0,15.0,10000,180,250, 
+                [
+                new cmd(CMD_DIRECT, navaids[lookup_navaid["KOGAV"]]),
+                new cmd(CMD_DIRECT, navaids[lookup_navaid["BALVI"]]),
+                new cmd(CMD_HDG,180)]));
 }
 
 function step() {
     for (var i = 0; i < planes.length; i = i + 1) {
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
+        planes[i].updatepos(1000 / 1000.);
         planes[i].updatepos(1000 / 1000.);
     }
 
@@ -313,7 +382,7 @@ function drawtextarea() {
     context.fillStyle="#000000";
     context.fillRect(0, canvas.height-15, canvas.width, 15);
     context.fillStyle="#00ff00";
-    context.fillText("Target direction: " + planes[0].target_dir + "; " + asdads, 10, canvas.height-5);
+    context.fillText("Target direction: " + planes[0].target_dir, 10, canvas.height-5);
 }
 
 function draw_vor(v) {
