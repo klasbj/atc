@@ -10,7 +10,8 @@ var NAVAID_VOR      = 0,
 
 var BG = "#000",
     PLANE_COLORS = ["#0f0","#f00","#00f"],
-    NAVAID_COLORS = ["#1994d1", "#1994d1","#1994d1"] ;
+    NAVAID_COLORS = ["#1994d1", "#1994d1","#1994d1"],
+    AIRPORT_COLOR = "#7f7f7f";
 
 function navaid(_id,_x,_y,_type,_textloc) {
     this.id = _id;
@@ -21,6 +22,33 @@ function navaid(_id,_x,_y,_type,_textloc) {
 }
 
 var navaids = [new navaid("ARL",320,240,NAVAID_VORDME,'l')];
+var lookup_navaid = {};
+
+function airport(_id,_rwys) {
+    this.id = _id;
+    this.rwys = _rwys;
+}
+
+function runway(_mod,_x1,_y1,_len,_dir) {
+    this.mod = _mod;
+    this.x1 = _x1;
+    this.y1 = _y1;
+    this.len = _len;
+    this.dir = _dir;
+    this.draw_dir = (_dir + 270) * Math.PI / 180;
+    this.x2 = _x1 + _len*Math.cos(this.draw_dir);
+    this.y2 = _y1 + _len*Math.sin(this.draw_dir);
+}
+
+var airports = [new airport("ESSA", [new runway('L',320,250,18,5),
+        new runway('R',335,255,15,5),
+        new runway('',328,236,15,71)])];
+
+function dist(x1,y1,x2,y2) {
+    dx = x2-x1;
+    dy = y2-y1;
+    return Math.sqrt(dx*dx + dy*dy);
+}
 
 /*
  * let each pixel denote 1/10 nm
@@ -143,6 +171,10 @@ function init() {
     planes.push(new plane('a', 50,50,10000,100,100));
     canvas = document.getElementById("game");
     context = canvas.getContext('2d');
+
+    for (i = 0; i < navaids.length; i = i + 1) {
+        lookup_navaid[navaids[i].id] = i;
+    }
 }
 
 function step() {
@@ -176,16 +208,36 @@ function draw() {
 function drawworld() {
     context.fillstyle="#000000";
     context.fillRect(0,0,640,480);  // clear the canvas
+
+    
+    for (i = 0; i < airports.length; i = i + 1) {
+        draw_airport(airports[i]);
+    }
+    context.lineWidth = 1;
+
     for (i = 0; i < navaids.length; i = i + 1) {
         draw_navaid(navaids[i]);
     }
+}
+
+function draw_airport(a) {
+    context.lineWidth = 2;
+    context.strokeStyle = AIRPORT_COLOR;
+    for (i = 0; i < a.rwys.length; i = i + 1) {
+        context.beginPath();
+        rwy = a.rwys[i];
+        context.moveTo(rwy.x1,rwy.y1);
+        context.lineTo(rwy.x2,rwy.y2);
+        context.stroke();
+    }
+    context.lineWidth = 1;
 }
 
 function drawtextarea() {
     context.fillStyle="#000000";
     context.fillRect(0, canvas.height-15, 640, 15);
     context.fillStyle="#00ff00";
-    context.fillText("Target direction: " + planes[0].target_dir, 10, canvas.height-5);
+    context.fillText("Target direction: " + planes[0].target_dir + "; dist: " + dist(planes[0].x,planes[0].y, navaids[lookup_navaid["ARL"]].x, navaids[lookup_navaid["ARL"]].y), 10, canvas.height-5);
 }
 
 function draw_vor(v) {
