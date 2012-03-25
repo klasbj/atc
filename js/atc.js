@@ -6,11 +6,12 @@ var STATE_NORMAL       = 0,
 
 var NAVAID_VOR      = 0,
     NAVAID_DME      = 1,
-    NAVAID_VORDME    = 2;
+    NAVAID_VORDME   = 2,
+    NAVAID_FIX      = 3;
 
 var BG = "#000",
     PLANE_COLORS = ["#0f0","#f00","#00f"],
-    NAVAID_COLORS = ["#1994d1", "#1994d1","#1994d1"],
+    NAVAID_COLORS = ["#1994d1", "#1994d1","#1994d1","#1994d1"],
     AIRPORT_COLOR = "#7f7f7f";
 
 var nmPerPixel = 1/5.;
@@ -23,11 +24,26 @@ function navaid(_id,_x,_y,_type,_textloc) {
     this.type = _type;
 }
 
-var navaids = [new navaid("ARL",65.0,44.0,NAVAID_VORDME,'l')];
+var navaids = [new navaid("ARL",65.0,44.0,NAVAID_VORDME,'l'),
+    new navaid("BALVI",55.0,39.0,NAVAID_FIX,'l'),
+    new navaid("TRS", 54.2, 81.7, NAVAID_VORDME,'r'),
+    new navaid("HMR", 78.8, 13.3, NAVAID_VORDME,'r'),
+    new navaid("TEB", 76.1, 50.8, NAVAID_VORDME,'r'),
+    new navaid("BABAP", 95.1, 56, NAVAID_FIX,'r'),
+    new navaid("XILAN", 107.3, 41.3, NAVAID_FIX,'r'),
+    new navaid("NTL", 95.5, 35, NAVAID_VORDME,'r'),
+    new navaid("ARS", 24.9, 49.7, NAVAID_VORDME,'r'),
+    new navaid("DKR", 36.2, 65.1, NAVAID_VOR,'r'),
+    new navaid("NOSLI", 45.1, 73.1, NAVAID_FIX,'r'),
+    new navaid("ELTOK", 37.0, 32.0, NAVAID_FIX,'r'),
+    new navaid("RESNA", 65.5, 7.0, NAVAID_FIX,'r'),
+    new navaid("KOGAV", 45.2, 13.0, NAVAID_FIX,'r'),
+    ];
 var lookup_navaid = {};
 
-function airport(_id,_rwys) {
+function airport(_id,_txtpos,_rwys) {
     this.id = _id;
+    this.txtpos = _txtpos;
     this.rwys = _rwys;
 }
 
@@ -42,10 +58,12 @@ function runway(_mod,_x1,_y1,_len,_dir) {
     this.y2 = _y1 + _len*Math.sin(this.draw_dir);
 }
 
+var essb = new airport("ESSB", {x:68,y:61.5} ,[new runway('', 66.8, 63.0, 0.9, 300.0)]);
 var essa = new airport("ESSA", {x:68,y:44}, [new runway('L',65.0,45.0,1.8,5), // ILS 1R,1L,19L,19R,26
         new runway('R',66.5,45.5,1.5,5),
         new runway('',65.8,43.6,1.5,71)]);
-var airports = [essa];
+var esow = new airport("ESOW", {x:17,y:49.8}, [new runway('', 24.4, 50.4, 1.4, 8)]); // ILS 19
+var airports = [essb,essa,esow];
 
 function dist(x1,y1,x2,y2) {
     dx = x2-x1;
