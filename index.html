@@ -7,16 +7,20 @@
     </head>
     <body onload="onload()" onkeydown="handleKeyUp(evt)">
         <h1>ATC -- The Game</h1>
-        <canvas id="game" width="640" height="480">
-        <p>Your browser does not support canvas.</p>
-        </canvas>
+        <div id="main" style="float:left">
+            <canvas id="game" width="640" height="480">
+            <p>Your browser does not support canvas.</p>
+            </canvas>
+        </style>
 
-        <h3>Instructions</h3>
-        <p>Use the arrow keys to control the aircraft (for now...).
-        <ul><li>Arrow left/right to set target heading.</li>
-            <li>Arrow up/down to raise and lower the target altitude.</li>
-            <li>PgUp / PgDn to raise and lower the target speed.</li>
-        </ul>
+        <div id="side" style="float:right">
+            <h3>Instructions</h3>
+            <p>Use the arrow keys to control the aircraft (for now...).
+            <ul><li>Arrow left/right to set target heading.</li>
+                <li>Arrow up/down to raise and lower the target altitude.</li>
+                <li>PgUp / PgDn to raise and lower the target speed.</li>
+            </ul>
+        </div>
 
     </body>
 </html>
