@@ -10,7 +10,7 @@ var NAVAID_VOR      = 0,
 
 var BG = "#000",
     PLANE_COLORS = ["#0f0","#f00","#00f"],
-    NAVAID_COLORS = ["#1f1f1f", "#1f1f1f","#1f1f1f"] ;
+    NAVAID_COLORS = ["#1994d1", "#1994d1","#1994d1"] ;
 
 function navaid(_id,_x,_y,_type,_textloc) {
     this.id = _id;
