@@ -12,7 +12,8 @@ var NAVAID_VOR      = 0,
 var BG = "#000",
     PLANE_COLORS = ["#0f0","#f00","#00f"],
     NAVAID_COLORS = ["#1994d1", "#1994d1","#1994d1","#1994d1"],
-    AIRPORT_COLOR = "#7f7f7f";
+    AIRPORT_COLOR = "#7f7f7f",
+    TMA_BOUNDARY_COLOR = "#3f3f3f";
 
 var nmPerPixel = 1/5.;
 
@@ -24,22 +25,26 @@ function navaid(_id,_x,_y,_type,_textloc) {
     this.type = _type;
 }
 
-var navaids = [new navaid("ARL",65.0,44.0,NAVAID_VORDME,'l'),
-    new navaid("BALVI",55.0,39.0,NAVAID_FIX,'l'),
-    new navaid("TRS", 54.2, 81.7, NAVAID_VORDME,'r'),
-    new navaid("HMR", 78.8, 13.3, NAVAID_VORDME,'r'),
-    new navaid("TEB", 76.1, 50.8, NAVAID_VORDME,'r'),
-    new navaid("BABAP", 95.1, 56, NAVAID_FIX,'r'),
-    new navaid("XILAN", 107.3, 41.3, NAVAID_FIX,'r'),
-    new navaid("NTL", 95.5, 35, NAVAID_VORDME,'r'),
-    new navaid("ARS", 24.9, 49.7, NAVAID_VORDME,'r'),
-    new navaid("DKR", 36.2, 65.1, NAVAID_VOR,'r'),
-    new navaid("NOSLI", 45.1, 73.1, NAVAID_FIX,'r'),
-    new navaid("ELTOK", 37.0, 32.0, NAVAID_FIX,'r'),
-    new navaid("RESNA", 65.5, 7.0, NAVAID_FIX,'r'),
-    new navaid("KOGAV", 45.2, 13.0, NAVAID_FIX,'r'),
+var navaids = [
+    new navaid("ARL",     65.0,  54.0,  NAVAID_VORDME,  'l'),
+    new navaid("BALVI",   55.0,  49.0,  NAVAID_FIX,     'l'),
+    new navaid("TRS",     54.2,  91.7,  NAVAID_VORDME,  'r'),
+    new navaid("HMR",     78.8,   8.5,  NAVAID_VORDME,  'r'),
+    new navaid("TEB",     76.1,  60.8,  NAVAID_VORDME,  'r'),
+    new navaid("BABAP",   95.1,  66.0,  NAVAID_FIX,     'r'),
+    new navaid("XILAN",  107.3,  51.3,  NAVAID_FIX,     'r'),
+    new navaid("NTL",     95.5,  45.0,  NAVAID_VORDME,  'r'),
+    new navaid("ARS",     24.9,  59.7,  NAVAID_VORDME,  'r'),
+    new navaid("DKR",     36.2,  75.1,  NAVAID_VOR,     'r'),
+    new navaid("NOSLI",   45.1,  83.1,  NAVAID_FIX,     'r'),
+    new navaid("ELTOK",   37.0,  42.0,  NAVAID_FIX,     'r'),
+    new navaid("RESNA",   65.5,   3.1,  NAVAID_FIX,     'r'),
+    new navaid("KOGAV",   45.2,  23.0,  NAVAID_FIX,     'r'),
     ];
 var lookup_navaid = {};
+
+var tma_boundary_x = [ 50.6,  81.6, 85.8, 104.1, 84.7, 72.5, 57.9, 16.7, 9.4];
+var tma_boundary_y = [ 89.9, 115.3, 81.9,    50, 9.4, 7.6,  11.2, 47.9, 96.9];
 
 function airport(_id,_txtpos,_rwys) {
     this.id = _id;
@@ -60,11 +65,11 @@ function runway(_mod,_x1,_y1,_len,_dir,_ilsnear,_ilsfar) {
     this.ils_far = _ilsfar;
 }
 
-var essb = new airport("ESSB", {x:68,y:61.5} ,[new runway('', 66.8, 63.0, 0.9, 300.0, true, true)]);
-var essa = new airport("ESSA", {x:68,y:44}, [new runway('L',65.0,45.0,1.8,5, true, true), // ILS 1R,1L,19L,19R,26
-        new runway('R',66.5,45.5,1.5,5, true, true),
-        new runway('',65.8,43.6,1.5,71, false, true)]);
-var esow = new airport("ESOW", {x:17,y:49.8}, [new runway('', 24.4, 50.4, 1.4, 8, false, true)]); // ILS 19
+var essb = new airport("ESSB", {x:68,y:71.5} ,[new runway('', 66.8, 73.0, 0.9, 300.0, true, true)]);
+var essa = new airport("ESSA", {x:68,y:54}, [new runway('L',65.0,55.0,1.8,5, true, true), // ILS 1R,1L,19L,19R,26
+        new runway('R',66.5,55.5,1.5,5, true, true),
+        new runway('',65.8,53.6,1.5,71, false, true)]);
+var esow = new airport("ESOW", {x:17,y:59.8}, [new runway('', 24.4, 60.4, 1.4, 8, false, true)]); // ILS 19
 var airports = [essb,essa,esow];
 
 function dist(x1,y1,x2,y2) {
@@ -230,6 +235,15 @@ function draw() {
 function drawworld() {
     context.fillstyle="#000000";
     context.fillRect(0,0,canvas.width,canvas.height);  // clear the canvas
+
+    context.strokeStyle = TMA_BOUNDARY_COLOR;
+    context.beginPath();
+    context.moveTo(tma_boundary_x[0]/nmPerPixel, tma_boundary_x[1]/nmPerPixel);
+    for (var i = 1; i < tma_boundary_x.length; i = i + 1) {
+        context.lineTo(tma_boundary_x[i]/nmPerPixel, tma_boundary_y[i]/nmPerPixel);
+    }
+    context.closePath();
+    context.stroke();
 
     for (var i = 0; i < airports.length; i = i + 1) {
         draw_airport(airports[i]);
