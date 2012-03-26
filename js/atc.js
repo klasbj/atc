@@ -17,6 +17,8 @@ var BG = "#000",
 
 var nmPerPixel = 1/5.;
 
+var acceleration = 10;
+
 function navaid(_id,_x,_y,_type,_textloc) {
     this.id = _id;
     this.x = _x;
@@ -450,6 +452,10 @@ function init() {
                 new cmd(CMD_DIRECT, navaids[lookup_navaid["KOGAV"]]),
                 new cmd(CMD_DIRECT, navaids[lookup_navaid["BALVI"]]),
                 new cmd(CMD_HDG,180)]));
+    planes.push(new plane('QWE123', 110.0,45.0,10000,180,250, 
+                [
+                new cmd(CMD_DIRECT, navaids[lookup_navaid["XILAN"]]),
+                new cmd(CMD_DIRECT, navaids[lookup_navaid["TEB"]])]));
     
     for (var i = 0; i < planes.length; i = i + 1) {
         lookup_planes[planes[i].id] = i;
@@ -457,18 +463,10 @@ function init() {
 }
 
 function step() {
-    for (var i = 0; i < planes.length; i = i + 1) {
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-        planes[i].updatepos(1000 / 1000.);
-    }
+    for (var j = 0; j < acceleration; j = j + 1)
+        for (var i = 0; i < planes.length; i = i + 1) {
+            planes[i].updatepos(1000 / 1000.);
+        }
 
     draw();
 
