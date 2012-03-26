@@ -207,38 +207,158 @@ function plane(_id,_x,_y,_alt,_dir,_speed,_cmds) {
     }
 }
 
-function handleKeyUp(evt) {
-    switch (evt.keyCode) {
-        case 37:    // left
-            planes[0].target_dir = (planes[0].target_dir + 350) % 360;
-            break;
-        case 39:    // right
-            planes[0].target_dir = (planes[0].target_dir + 10) % 360;
-            break;
-        case 40:    // down
-            planes[0].target_alt = Math.max(0,planes[0].target_alt-1000);
-            break;
-        case 38:    // up
-            planes[0].target_alt = planes[0].target_alt+1000;
-            break;
+var KEY_ENTER   = 13,
+    KEY_ESCAPE  = 27,
+    KEY_SPACE   = 32,
+    KEY_DEL     = 8,
+    KEY_COMMA   = 188,  //44,
+    KEY_A       = "A".charCodeAt(0),
+    KEY_S       = "S".charCodeAt(0),
+    KEY_H       = "H".charCodeAt(0),
+    KEY_C       = "C".charCodeAt(0),
+    KEY_V       = "V".charCodeAt(0);
 
-        case 'n'.charCodeAt(0):
-            planes[0].state = (planes[0].state + 1) % PLANE_COLORS.length;
-            break;
+var ACTION_ALT      = KEY_A,
+    ACTION_SPD      = KEY_S,
+    ACTION_CLE      = KEY_C,
+    ACTION_VIA      = KEY_V,
+    ACTION_HDG      = KEY_H,
+    INPUT_ABORT     = KEY_ESCAPE,
+    INPUT_COMMIT    = KEY_ENTER,
+    INPUT_NEXT      = KEY_COMMA,
+    INPUT_BACK      = KEY_DEL;
 
-        case 33:    // PgUp
-            planes[0].target_speed = planes[0].target_speed + 10;
-            break;
-        case 34:    // PgDn
-            planes[0].target_speed = Math.max(0, planes[0].target_speed - 10);
-            break;
-        default:
-            break;
-    }
-    draw();
+var READ_STATE_PLANE_ID = 0,
+    READ_STATE_ACTION   = 1,
+    READ_STATE_ARG      = 2,
+    READ_STATE_ALT_ARG  = 3,
+    READ_STATE_SPD_ARG  = 4,
+    READ_STATE_CLE_ARG  = 5,
+    READ_STATE_VIA_ARG  = 6,
+    READ_STATE_HDG_ARG  = 7;
+
+var CMD_STRINGS = {
+    "A" : "altitude",
+    "S" : "speed",
+    "C" : "cleared to",
+    "V" : "via",
+    "H" : "fly heading"
+};
+
+var current_cmd = [];
+var current_read_state = READ_STATE_PLANE_ID;
+var current_string = "";
+
+function commitCmd() {
 }
 
-window.addEventListener('keypress', handleKeyUp, true);
+function cmd_string() {
+    var str = "";
+    for (var i = 0; i < current_cmd.length; i = i + 1) {
+        if (i % 2 == 0) {
+            str = str + current_cmd[i] + ", ";
+        } else {
+            str = str + CMD_STRINGS[String.fromCharCode(current_cmd[i])] + " ";
+        }
+    }
+    return str + current_string;
+}
+
+function handleKey(evt) {
+    var done = 1;
+    if (current_read_state == READ_STATE_ACTION) {
+        switch (evt.keyCode) {
+            case ACTION_ALT:
+            case ACTION_SPD:
+            case ACTION_CLE:
+            case ACTION_VIA:
+            case ACTION_HDG:
+                current_cmd.push(evt.keyCode);
+                current_read_state = READ_STATE_ARG;
+                done = 2;
+                break;
+            default:
+                break;
+        }
+    }
+    if (done == 1) {
+        switch (evt.keyCode) {
+            case INPUT_COMMIT:
+                commitCmd();
+                break;
+            case INPUT_ABORT:
+                current_string = "";
+                current_cmd = [];
+                current_read_state = READ_STATE_PLANE_ID;
+                break;
+            case INPUT_NEXT:
+                current_cmd.push(current_string);
+                current_string = "";
+                current_read_state = READ_STATE_ACTION;
+                break;
+            case INPUT_BACK:
+                if (current_string.length > 0) {
+                    current_string = current_string.substring(0,current_string.length-1);
+                } else if (current_read_state == READ_STATE_ACTION) {
+                    current_string = current_cmd.pop();
+                    current_read_state = READ_STATE_ARG;
+                } else {
+                    current_cmd.pop();
+                    current_read_state = current_cmd.length == 0 ? READ_STATE_PLANE_ID : READ_STATE_ACTION;
+                }
+                break;
+            default:
+                done = 0;
+                break;
+        }
+    }
+
+    if (done == 0) {
+        if ((evt.keyCode >= "A".charCodeAt(0) && evt.keyCode <= "Z".charCodeAt(0)) ||
+            (evt.keyCode >= "0".charCodeAt(0) && evt.keyCode <= "9".charCodeAt(0)) ||
+            evt.keyCode == KEY_SPACE) {
+            current_string = current_string + (String.fromCharCode(evt.keyCode));
+            done = 3;
+        }
+    }
+
+    draw();
+
+    if (done == 0) {
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+    }
+    return done != 0;
+}
+
+function handleKeypress(e) {
+    var suppress = false;
+    switch (e.keyCode) {
+        case INPUT_BACK:
+        case INPUT_ABORT:
+        case INPUT_NEXT:
+        case INPUT_COMMIT:
+        case 44:    // , in keypress mode
+            suppress = true;
+            break;
+        default:
+           break;
+    }
+    if (suppress) {
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+    }
+    return suppress;
+}
+
+if (window.addEventListener) {
+    window.addEventListener('keydown', handleKey, false);
+    window.addEventListener('keypress', handleKeypress, false);
+}
+if (window.attachEvent) {
+    window.attachEvent('keydown', handleKey, false);
+    window.attachEvent('keypress', handleKeypress, false);
+}
 
 var planes = [];
 var canvas;
@@ -382,7 +502,7 @@ function drawtextarea() {
     context.fillStyle="#000000";
     context.fillRect(0, canvas.height-15, canvas.width, 15);
     context.fillStyle="#00ff00";
-    context.fillText("Target direction: " + planes[0].target_dir, 10, canvas.height-5);
+    context.fillText(": " + cmd_string() + "_", 10, canvas.height-5);
 }
 
 function draw_vor(v) {
