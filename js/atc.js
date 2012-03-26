@@ -361,6 +361,7 @@ if (window.attachEvent) {
 }
 
 var planes = [];
+var lookup_planes = {};
 var canvas;
 var context;
 
@@ -382,6 +383,10 @@ function init() {
                 new cmd(CMD_DIRECT, navaids[lookup_navaid["KOGAV"]]),
                 new cmd(CMD_DIRECT, navaids[lookup_navaid["BALVI"]]),
                 new cmd(CMD_HDG,180)]));
+    
+    for (var i = 0; i < planes.length; i = i + 1) {
+        lookup_planes[planes[i].id] = i;
+    }
 }
 
 function step() {
@@ -444,8 +449,6 @@ function drawworld() {
         draw_navaid(navaids[i]);
     }
 }
-
-var asdads = "";
 
 function draw_airport(a) {
     context.lineWidth = 2;
