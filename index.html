@@ -7,19 +7,44 @@
     </head>
     <body onload="onload()">
         <h1>ATC -- The Game</h1>
-        <div id="main" style="float:left">
+        <div id="main" style="text-align: center">
             <canvas id="game" width="640" height="560">
             <p>Your browser does not support canvas.</p>
             </canvas>
         </style>
 
-        <div id="side" style="float:right">
+        <div id="side" style="text-align: left">
             <h3>Instructions</h3>
-            <p>Use the arrow keys to control the aircraft (for now...).
-            <ul><li>Arrow left/right to set target heading.</li>
-                <li>Arrow up/down to raise and lower the target altitude.</li>
-                <li>PgUp / PgDn to raise and lower the target speed.</li>
+            <p>Currently it is possible to control the planes around. To order
+                a plane to do something, type its identifier followed by the
+                plane's commands. Commands are a combination of one verb and an
+                argument, followed by a separator (comma). If the command is
+                invalid the plane will not perform the command. The verbs and
+                their respective argument(s) are:
+            <ul>
+                <li><pre>a</pre> altitude, expects one number as parameter,
+                    the target altitude in feet.</li>
+                <li><pre>s</pre> speed, expects one number,
+                    the target speed in knots.</li>
+                <li><pre>c</pre> cleared to, expects one string,
+                    the name of the navaid to which the aircraft is cleared
+                    (direct, except if via is specified.)</li>
+                <li><pre>v</pre> via, expects a string of waypoints in the
+                    order they should be passed before the cleared waypoint,
+                    separated by spaces.</li>
+                <li><pre>h</pre> fly heading, expects one number, the heading
+                    the aircraft shall fly.
             </ul>
+            Each command should be followed by a ',' (comma).
+            </p>
+            <p> An example command is (as entered by the user):
+            <pre>ASD123,a3000,s200,cARS,vKOGAV ELTOK&ltENTER&gt</pre>
+            Read out, this command is:
+            <pre>ASD123, altitude 3000, speed 200, cleared to ARS, via KOGAV ELTOK</pre>
+            </p>
+
+            <p>If you make a mistake while writing the commands you can use
+            &ltBACKSPACE&gt as usual. &ltESC&gt clears the whole command.</p>
         </div>
 
     </body>
