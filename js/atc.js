@@ -28,23 +28,23 @@ function navaid(_id,_x,_y,_type,_textloc) {
 var navaids = [
     new navaid("ARL",     65.0,  54.0,  NAVAID_VORDME,  'l'),
     new navaid("BALVI",   55.0,  49.0,  NAVAID_FIX,     'l'),
-    new navaid("TRS",     54.2,  91.7,  NAVAID_VORDME,  'r'),
+    new navaid("TRS",     54.2,  98.7,  NAVAID_VORDME,  'r'),
     new navaid("HMR",     78.8,   8.5,  NAVAID_VORDME,  'r'),
     new navaid("TEB",     76.1,  60.8,  NAVAID_VORDME,  'r'),
     new navaid("BABAP",   95.1,  66.0,  NAVAID_FIX,     'r'),
     new navaid("XILAN",  107.3,  51.3,  NAVAID_FIX,     'r'),
     new navaid("NTL",     95.5,  45.0,  NAVAID_VORDME,  'r'),
     new navaid("ARS",     24.9,  59.7,  NAVAID_VORDME,  'r'),
-    new navaid("DKR",     36.2,  75.1,  NAVAID_VOR,     'r'),
-    new navaid("NOSLI",   45.1,  83.1,  NAVAID_FIX,     'r'),
+    new navaid("DKR",     36.2,  82.1,  NAVAID_VOR,     'r'),
+    new navaid("NOSLI",   45.1,  90.1,  NAVAID_FIX,     'r'),
     new navaid("ELTOK",   37.0,  42.0,  NAVAID_FIX,     'r'),
     new navaid("RESNA",   65.5,   3.1,  NAVAID_FIX,     'r'),
     new navaid("KOGAV",   45.2,  23.0,  NAVAID_FIX,     'r'),
     ];
 var lookup_navaid = {};
 
-var tma_boundary_x = [ 50.6,  81.6, 85.8, 104.1, 84.7, 72.5, 57.9, 16.7, 9.4];
-var tma_boundary_y = [ 89.9, 115.3, 81.9,    50, 9.4, 7.6,  11.2, 47.9, 96.9];
+var tma_boundary_x = [ 50.6,  54.0, 85.8, 104.1, 84.7, 72.5, 57.9, 16.7, 9.4];
+var tma_boundary_y = [ 97.9, 115.3, 81.9,    50, 9.4, 7.6,  11.2, 47.9, 96.9];
 
 function airport(_id,_txtpos,_rwys) {
     this.id = _id;
@@ -432,7 +432,7 @@ function drawworld() {
 
     context.strokeStyle = TMA_BOUNDARY_COLOR;
     context.beginPath();
-    context.moveTo(tma_boundary_x[0]/nmPerPixel, tma_boundary_x[1]/nmPerPixel);
+    context.moveTo(tma_boundary_x[0]/nmPerPixel, tma_boundary_y[0]/nmPerPixel);
     for (var i = 1; i < tma_boundary_x.length; i = i + 1) {
         context.lineTo(tma_boundary_x[i]/nmPerPixel, tma_boundary_y[i]/nmPerPixel);
     }
