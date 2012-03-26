@@ -249,7 +249,82 @@ var current_cmd = [];
 var current_read_state = READ_STATE_PLANE_ID;
 var current_string = "";
 
-function commitCmd() {
+function reset_cmd() {
+    current_string = "";
+    current_cmd = [];
+    current_read_state = READ_STATE_PLANE_ID;
+}
+
+function commit_cmd() {
+    if (current_read_state == READ_STATE_ARG) {
+        current_cmd.push(current_string);
+    }
+    if (current_cmd.length > 0) {
+        var p = planes[lookup_planes[current_cmd[0]]];
+        if (p) {
+            // plane is valid
+            var valid = true;
+            var alt = -1;
+            var speed = -1;
+            var cmds = [];
+            for (var i = 1; i < current_cmd.length-1 && valid; i = i + 2) {
+                switch (current_cmd[i]) {
+                    case ACTION_ALT:
+                        alt = parseInt(current_cmd[i+1],10);
+                        valid = alt ? true : false;
+                        break;
+                    case ACTION_SPD:
+                        speed = parseInt(current_cmd[i+1],10);
+                        valid = speed ? true : false;
+                        break;
+                    case ACTION_HDG:
+                        var h = parseInt(current_cmd[i+1],10);
+                        valid = h ? true : false;
+                        h = h % 360;
+                        cmds.push(new cmd(CMD_HDG, h));
+                        break;
+                    case ACTION_CLE:
+                        var n = navaids[lookup_navaid[current_cmd[i+1]]];
+                        if (n) {
+                            cmds.push(new cmd(CMD_DIRECT, n));
+                        } else {
+                            valid = false;
+                        }
+                        break;
+                    case ACTION_VIA:
+                        if (cmds.length != 1) {
+                            valid = false;
+                        } else {
+                            var aid_names = current_cmd[i+1].split(" ");
+                            var cc = cmds.pop();
+                            if (aid_names.length > 0) {
+                                for (var j = 0; j < aid_names.length && valid; j = j + 1) {
+                                    var naid = navaids[lookup_navaid[aid_names[j]]];
+                                    if (naid)
+                                        cmds.push(new cmd(CMD_DIRECT, naid));
+                                    else
+                                        valid = false;
+                                }
+                            } else
+                                valid = false;
+                            cmds.push(cc);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        // if the command is valid
+        if (valid) {
+            if (alt >= 0)
+                p.target_alt = alt;
+            if (speed >= 0)
+                p.target_speed = speed;
+            if (cmds.length > 0)
+                p.cmds = cmds;
+        }
+    }
 }
 
 function cmd_string() {
@@ -284,12 +359,10 @@ function handleKey(evt) {
     if (done == 1) {
         switch (evt.keyCode) {
             case INPUT_COMMIT:
-                commitCmd();
-                break;
+                commit_cmd();
+                // fall through
             case INPUT_ABORT:
-                current_string = "";
-                current_cmd = [];
-                current_read_state = READ_STATE_PLANE_ID;
+                reset_cmd();
                 break;
             case INPUT_NEXT:
                 current_cmd.push(current_string);
@@ -323,12 +396,6 @@ function handleKey(evt) {
     }
 
     draw();
-
-    if (done == 0) {
-        if (e.preventDefault) e.preventDefault();
-        if (e.stopPropagation) e.stopPropagation();
-    }
-    return done != 0;
 }
 
 function handleKeypress(e) {
@@ -378,7 +445,7 @@ function init() {
         lookup_navaid[navaids[i].id] = i;
     }
     
-    planes.push(new plane('a', 15.0,15.0,10000,180,250, 
+    planes.push(new plane('ASD123', 15.0,15.0,10000,180,250, 
                 [
                 new cmd(CMD_DIRECT, navaids[lookup_navaid["KOGAV"]]),
                 new cmd(CMD_DIRECT, navaids[lookup_navaid["BALVI"]]),
