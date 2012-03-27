@@ -52,10 +52,22 @@ function airport(_id,_txtpos,_rwys) {
     this.id = _id;
     this.txtpos = _txtpos;
     this.rwys = _rwys;
+    this.lookup_rwy = function(id) {
+        for (var i = 0; i < this.rwys.length; ++i) {
+            if (this.rwys[i].nearid == id) {
+                return this.rwys[i].near();
+                break;
+            } else if (this.rwys[i].farid == id) {
+                return this.rwys[i].far();
+                break;
+            }
+        }
+    }
 }
 
-function runway(_mod,_x1,_y1,_len,_dir,_ilsnear,_ilsfar) {
-    this.mod = _mod;
+function runway(_nearid,_farid,_x1,_y1,_len,_dir,_ilsnear,_ilsfar) {
+    this.nearid = _nearid;
+    this.farid = _farid;
     this.x1 = _x1;
     this.y1 = _y1;
     this.len = _len;
@@ -65,15 +77,24 @@ function runway(_mod,_x1,_y1,_len,_dir,_ilsnear,_ilsfar) {
     this.y2 = _y1 + _len*Math.sin(this.draw_dir);
     this.ils_near = _ilsnear;
     this.ils_far = _ilsfar;
+
+    this.near = function() {
+        return { x:this.x1, y:this.y1, dir:this.dir, ils:this.ils_near, id:this.nearid };
+    }
+    this.far = function() {
+        return { x:this.x2, y:this.y2, dir:(this.dir + 180)%360, ils:this.ils_far, id:this.farid };
+    }
 }
 
-var essb = new airport("ESSB", {x:68,y:71.5} ,[new runway('', 66.8, 73.0, 0.9, 300.0, true, true)]);
+var essb = new airport("ESSB", {x:68,y:71.5} ,[new runway('30','12', 66.8, 73.0, 0.9, 300.0, true, true)]);
 var essa = new airport("ESSA", {x:68,y:54}, [
-        new runway('L', 65.0,   55.0,   1.8,    5,  true,   true), // ILS 1R,1L,19L,19R,26
-        new runway('R', 66.5,   55.5,   1.5,    5,  true,   true),
-        new runway('',  65.8,   53.6,   1.5,    71, false,  true)]);
-var esow = new airport("ESOW", {x:17,y:59.8}, [new runway('', 24.4, 60.4, 1.4, 8, false, true)]); // ILS 19
+        new runway('01L', '19R', 65.0,   55.0,   1.8,    5,  true,   true), // ILS 1R,1L,19L,19R,26
+        new runway('01R', '19L', 66.5,   55.5,   1.5,    5,  true,   true),
+        new runway('08', '26', 65.8,   53.6,   1.5,    71, false,  true)]);
+var esow = new airport("ESOW", {x:17,y:59.8}, [new runway('01','19', 24.4, 60.4, 1.4, 8, false, true)]); // ILS 19
 var airports = [essb,essa,esow];
+
+var lookup_airports = {};
 
 function dist(x1,y1,x2,y2) {
     dx = x2-x1;
@@ -87,7 +108,7 @@ function cmd_hdg(plane, args) {
 }
 
 function cmd_hdg_fin(plane, args) {
-    return false; // can never end
+    return true; // always ends at once
 }
 
 function cmd_direct(plane, args) {
@@ -105,10 +126,48 @@ function cmd_direct_fin(plane, args) {
     return dist(plane.x, plane.y, args.x, args.y) < 1.; // done when within half a mile of target
 }
 
-var cmd_fcns = [ [cmd_hdg,cmd_direct], [cmd_hdg_fin, cmd_direct_fin] ];
+function cmd_ils(plane, args) {
+    var ang_to_rwy = Math.round(Math.atan2(args.t.y-plane.y, args.t.x-plane.x)*180./Math.PI);
+    ang_to_rwy = (ang_to_rwy + 360 + 90) % 360;
+    if (!args.established) {
+        /* check if the plane is established */
 
-var CMD_HDG = 0,
-    CMD_DIRECT = 1;
+        var dd = Math.abs(ang_to_rwy - args.t.dir);
+        if (dd > 180.) dd = 360 - dd;
+        if (dd < 5.) {
+            args.established = true;
+        }
+    } else {
+        plane.target_dir = ang_to_rwy;
+
+        var d = dist(plane.x,plane.y,args.t.x,args.t.y);
+        plane.target_alt = Math.min(plane.target_alt, d*300);
+    }
+}
+
+function cmd_ils_fin(plane, args) {
+    return false;
+/*    return plane.target_alt < 25.;
+    if (args.established) {
+        var ang_to_rwy = Math.round(Math.atan2(args.t.y-plane.y, args.t.x-plane.x)*180./Math.PI);
+        ang_to_rwy = (ang_to_rwy + 360 + 90) % 360;
+        var dd = Math.abs(ang_to_rwy - args.t.dir);
+        if (dd > 180.) dd = 360 - dd;
+        var d = dist(plane.x,plane.y,args.t.x,args.t.y);
+        if (d < .5 && plane.alt > d*600) {
+            return true;
+        }
+        if (dd > 20.) {
+            return true;
+        }
+    }*/
+}
+
+var cmd_fcns = [ [cmd_hdg,cmd_direct,cmd_ils], [cmd_hdg_fin, cmd_direct_fin, cmd_ils_fin] ];
+
+var CMD_HDG     = 0,
+    CMD_DIRECT  = 1,
+    CMD_ILS     = 2;
 
 function cmd(_type, _args) {
     this.type = _type;
@@ -218,13 +277,15 @@ var KEY_ENTER   = 13,
     KEY_S       = "S".charCodeAt(0),
     KEY_H       = "H".charCodeAt(0),
     KEY_C       = "C".charCodeAt(0),
-    KEY_V       = "V".charCodeAt(0);
+    KEY_V       = "V".charCodeAt(0),
+    KEY_I       = "I".charCodeAt(0);
 
 var ACTION_ALT      = KEY_A,
     ACTION_SPD      = KEY_S,
     ACTION_CLE      = KEY_C,
     ACTION_VIA      = KEY_V,
     ACTION_HDG      = KEY_H,
+    ACTION_ILS      = KEY_I,
     INPUT_ABORT     = KEY_ESCAPE,
     INPUT_COMMIT    = KEY_ENTER,
     INPUT_NEXT      = KEY_COMMA,
@@ -244,7 +305,8 @@ var CMD_STRINGS = {
     "S" : "speed",
     "C" : "cleared to",
     "V" : "via",
-    "H" : "fly heading"
+    "H" : "fly heading",
+    "I" : "cleared ILS approach"
 };
 
 var current_cmd = [];
@@ -312,6 +374,20 @@ function commit_cmd() {
                             cmds.push(cc);
                         }
                         break;
+                    case ACTION_ILS:
+                        var ilss = current_cmd[i+1].split(" ");
+                        var airportid = ilss[0];
+                        var rwyid = ilss[1];
+                        valid = false;
+                        var ap = lookup_airports[airportid];
+                        if (ap) {
+                            var rwy = ap.lookup_rwy(rwyid);
+                            if (rwy && rwy.ils) {
+                                valid = true;
+                                cmds.push(new cmd(CMD_ILS, {t:rwy}));
+                            }
+                        }
+                        break;
                     default:
                         break;
                 }
@@ -350,6 +426,7 @@ function handleKey(evt) {
             case ACTION_CLE:
             case ACTION_VIA:
             case ACTION_HDG:
+            case ACTION_ILS:
                 current_cmd.push(evt.keyCode);
                 current_read_state = READ_STATE_ARG;
                 done = 2;
@@ -408,6 +485,7 @@ function handleKeypress(e) {
         case INPUT_NEXT:
         case INPUT_COMMIT:
         case 44:    // , in keypress mode
+        case KEY_SPACE:
             suppress = true;
             break;
         default:
