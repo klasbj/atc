@@ -7,13 +7,41 @@
     </head>
     <body onload="onload()">
         <h1>ATC -- The Game</h1>
-        <div id="main" style="text-align: center">
+        <div id="container" style="clear:both; text-align:center">
+        <div id="main" style="float: left;">
             <canvas id="game" width="640" height="560">
             <p>Your browser does not support canvas.</p>
             </canvas>
         </style>
 
-        <div id="side" style="text-align: left">
+        <div id="sidebar" style="float:right; text-align: left">
+            <h3>Runway information</h3>
+            <p><b>ESSA</b> - Arlanda Airport
+            <table id="essa-rwys" style="border: 0px hidden black">
+                <tr><td>Identifier</td><td>Heading</td><td>ILS</td></tr>
+                <tr><td>01L</td><td>005</td><td>Yes</td>
+                <tr><td>19R</td><td>185</td><td>Yes</td>
+                <tr><td>01R</td><td>005</td><td>Yes</td>
+                <tr><td>19L</td><td>185</td><td>Yes</td>
+                <tr><td>08</td><td>071</td><td>No</td>
+                <tr><td>26</td><td>251</td><td>Yes</td>
+            </table></p>
+            <p><b>ESSB</b> - Bromma Airport
+            <table id="essb-rwys" style="border: 0px hidden black">
+                <tr><td>Identifier</td><td>Heading</td><td>ILS</td></tr>
+                <tr><td>12</td><td>120</td><td>Yes</td>
+                <tr><td>30</td><td>300</td><td>Yes</td>
+            </table></p>
+            <p><b>ESOW</b> - Stockholm/Västerås Airport
+            <table id="esow-rwys" style="border: 0px hidden black">
+                <tr><td>Identifier</td><td>Heading</td><td>ILS</td></tr>
+                <tr><td>01</td><td>008</td><td>No</td>
+                <tr><td>19</td><td>188</td><td>Yes</td>
+            </table></p>
+        </div>
+        </div>
+
+        <div id="instructions" style="text-align: left; clear:both">
             <h3>Instructions</h3>
             <p>Currently it is possible to control the planes around. To order
                 a plane to do something, type its identifier followed by the
