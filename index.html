@@ -34,6 +34,8 @@
                     separated by spaces.</li>
                 <li><pre>h</pre> fly heading, expects one number, the heading
                     the aircraft shall fly.
+                <li><pre>i</pre> cleared ILS approach, expects one string, the
+                    name of the airport and the runway identifier.
             </ul>
             Each command should be followed by a ',' (comma).
             </p>
@@ -45,6 +47,14 @@
 
             <p>If you make a mistake while writing the commands you can use
             &ltBACKSPACE&gt as usual. &ltESC&gt clears the whole command.</p>
+            <p>An example of an approach clearance is:
+            <pre>ASD123,a3000,s140,h330,iESSA 26</pre>
+            Read out this means:
+            <pre>ASD123, altitude 3000, speed 140, heading 330, cleared ILS approach 26 at ESSA</pre>
+            When the plane will fly on heading 330 until it intersects the
+            outgoing 080 radial from the rwy 26 ILS. It will then turn
+            towards the runway and descend as appropriate as it gets closer to the runway.
+            </p>
         </div>
 
     </body>
