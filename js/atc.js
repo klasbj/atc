@@ -203,6 +203,7 @@ function plane(_id,_x,_y,_alt,_dir,_speed,_cmds) {
     this.acceleration = 5;  // knots / s
 
     this.state = STATE_NORMAL;
+    this.alarm = false;
 
     /* dt is time difference in ss */
     this.updatepos = function(dt) {
@@ -212,6 +213,8 @@ function plane(_id,_x,_y,_alt,_dir,_speed,_cmds) {
             * dt;                   // nm since last
         this.x = this.x + dlen * Math.cos(d);
         this.y = this.y + dlen * Math.sin(d);
+
+        this.alarm = false;
 
         /* update the ap cmd */
         if (this.cmds.length == 0) {
@@ -324,7 +327,7 @@ function commit_cmd() {
         current_cmd.push(current_string);
     }
     if (current_cmd.length > 0) {
-        var p = planes[lookup_planes[current_cmd[0]]];
+        var p = lookup_planes[current_cmd[0]];
         if (p) {
             // plane is valid
             var valid = true;
@@ -348,7 +351,7 @@ function commit_cmd() {
                         cmds.push(new cmd(CMD_HDG, h));
                         break;
                     case ACTION_CLE:
-                        var n = navaids[lookup_navaid[current_cmd[i+1]]];
+                        var n = lookup_navaid[current_cmd[i+1]];
                         if (n) {
                             cmds.push(new cmd(CMD_DIRECT, n));
                         } else {
@@ -363,7 +366,7 @@ function commit_cmd() {
                             var cc = cmds.pop();
                             if (aid_names.length > 0) {
                                 for (var j = 0; j < aid_names.length && valid; j = j + 1) {
-                                    var naid = navaids[lookup_navaid[aid_names[j]]];
+                                    var naid = lookup_navaid[aid_names[j]];
                                     if (naid)
                                         cmds.push(new cmd(CMD_DIRECT, naid));
                                     else
@@ -511,6 +514,7 @@ var planes = [];
 var lookup_planes = {};
 var canvas;
 var context;
+var num_landed = 0;
 
 function onload() {
     init();
@@ -522,29 +526,86 @@ function init() {
     context = canvas.getContext('2d');
 
     for (var i = 0; i < navaids.length; i = i + 1) {
-        lookup_navaid[navaids[i].id] = i;
+        lookup_navaid[navaids[i].id] = navaids[i];
     }
     
     planes.push(new plane('ASD123', 15.0,15.0,10000,180,250, 
                 [
-                new cmd(CMD_DIRECT, navaids[lookup_navaid["KOGAV"]]),
-                new cmd(CMD_DIRECT, navaids[lookup_navaid["BALVI"]]),
+                new cmd(CMD_DIRECT, lookup_navaid["KOGAV"]),
+                new cmd(CMD_DIRECT, lookup_navaid["BALVI"]),
                 new cmd(CMD_HDG,180)]));
     planes.push(new plane('QWE123', 110.0,45.0,10000,180,250, 
                 [
-                new cmd(CMD_DIRECT, navaids[lookup_navaid["XILAN"]]),
-                new cmd(CMD_DIRECT, navaids[lookup_navaid["TEB"]])]));
+                new cmd(CMD_DIRECT, lookup_navaid["XILAN"]),
+                new cmd(CMD_DIRECT, lookup_navaid["TEB"])]));
     
     for (var i = 0; i < planes.length; i = i + 1) {
-        lookup_planes[planes[i].id] = i;
+        lookup_planes[planes[i].id] = planes[i];
+    }
+
+    for (var i = 0; i < airports.length; i = i + 1) {
+        lookup_airports[airports[i].id] = airports[i];
     }
 }
 
 function step() {
-    for (var j = 0; j < acceleration; j = j + 1)
+    for (var j = 0; j < acceleration; j = j + 1) {
         for (var i = 0; i < planes.length; i = i + 1) {
             planes[i].updatepos(1000 / 1000.);
         }
+
+        var delete_these = [];
+        for (var i = 0; i < planes.length; i = i + 1) {
+            var crashed = false;
+            for (var k = 0; k < planes.length; k = k + 1) {
+                if (i == k) continue;
+                var d = dist(planes[i].x, planes[i].y, planes[k].x, planes[k].y);
+                var da = Math.abs(planes[i].alt - planes[k].alt);
+                if (d < .2 && da < 100) {
+                    console.log("MID AIR COLLISION: " + planes[i].id + " - " + planes[k].id);
+                    crashed = true;
+                    // CRASH
+                } else if (d < 3. && da <= 1000) {
+                    planes[i].alarm = true;
+                    planes[k].alarm = true;
+                }
+            }
+            var landed = false;
+            if (planes[i].alt < 25.) {
+                if (planes[i].cmds[0].type === CMD_ILS) {
+                    var t = planes[i].cmds[0].args.t;
+                    var dd = Math.abs(planes[i].dir - t.dir);
+                    if (dd > 180.) dd = 360 - dd;
+                    var d = dist(planes[i].x,planes[i].y,t.x,t.y);
+
+                    console.log("has landed? d: " + d + "; dd: " + dd);
+
+                    if (planes[i].speed <= 150 &&
+                        d < .1 &&
+                        dd < 5.) {
+                        landed = true;
+                    }
+                }
+                if (landed) {
+                    // SCORE
+                    num_landed += 1;
+                    console.log("LANDED " + planes[i].id);
+                } else {
+                    // CRASH
+                    console.log("FLIGHT INTO GROUND " + planes[i].id);
+                    crashed = true;
+                }
+            }
+            if (crashed || landed) {
+                delete_these.push(i);
+            }
+        }
+        for (var i = 0; i < delete_these.length; i += 1) {
+            delete lookup_planes[planes[delete_these[i]].id];
+            delete planes[delete_these[i]];
+        }
+        planes = planes.filter(function() { return true; });
+    }
 
     draw();
 
@@ -731,8 +792,8 @@ function drawplane(p) {
         lx2 = x + sticklen*Math.cos(radang),
         ly2 = y + sticklen*Math.sin(radang);
 
-    context.strokeStyle = PLANE_COLORS[p.state];
-    context.fillStyle = PLANE_COLORS[p.state];
+    context.strokeStyle = PLANE_COLORS[p.alarm ? STATE_ALERT : p.state];
+    context.fillStyle = PLANE_COLORS[p.alarm ? STATE_ALERT : p.state];
 
     context.strokeRect(dx,dy,5,5);
     context.beginPath();
