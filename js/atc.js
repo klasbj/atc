@@ -17,7 +17,7 @@ var BG = "#000",
 
 var nmPerPixel = 1/5.;
 
-var acceleration = 10;
+var acceleration = 1;
 
 function navaid(_id,_x,_y,_type,_textloc) {
     this.id = _id;
@@ -147,20 +147,6 @@ function cmd_ils(plane, args) {
 
 function cmd_ils_fin(plane, args) {
     return false;
-/*    return plane.target_alt < 25.;
-    if (args.established) {
-        var ang_to_rwy = Math.round(Math.atan2(args.t.y-plane.y, args.t.x-plane.x)*180./Math.PI);
-        ang_to_rwy = (ang_to_rwy + 360 + 90) % 360;
-        var dd = Math.abs(ang_to_rwy - args.t.dir);
-        if (dd > 180.) dd = 360 - dd;
-        var d = dist(plane.x,plane.y,args.t.x,args.t.y);
-        if (d < .5 && plane.alt > d*600) {
-            return true;
-        }
-        if (dd > 20.) {
-            return true;
-        }
-    }*/
 }
 
 var cmd_fcns = [ [cmd_hdg,cmd_direct,cmd_ils], [cmd_hdg_fin, cmd_direct_fin, cmd_ils_fin] ];
@@ -281,7 +267,9 @@ var KEY_ENTER   = 13,
     KEY_H       = "H".charCodeAt(0),
     KEY_C       = "C".charCodeAt(0),
     KEY_V       = "V".charCodeAt(0),
-    KEY_I       = "I".charCodeAt(0);
+    KEY_I       = "I".charCodeAt(0),
+    KEY_PLUS    = "+".charCodeAt(0),
+    KEY_MINUS   = "-".charCodeAt(0);
 
 var ACTION_ALT      = KEY_A,
     ACTION_SPD      = KEY_S,
@@ -292,7 +280,9 @@ var ACTION_ALT      = KEY_A,
     INPUT_ABORT     = KEY_ESCAPE,
     INPUT_COMMIT    = KEY_ENTER,
     INPUT_NEXT      = KEY_COMMA,
-    INPUT_BACK      = KEY_DEL;
+    INPUT_BACK      = KEY_DEL,
+    TIME_UP         = KEY_PLUS,
+    TIME_DOWN       = KEY_MINUS;
 
 var READ_STATE_PLANE_ID = 0,
     READ_STATE_ACTION   = 1,
@@ -404,8 +394,24 @@ function commit_cmd() {
                 p.target_speed = speed;
             if (cmds.length > 0)
                 p.cmds = cmds;
+            msgs.push(cmd_readback());
+        } else {
+            msgs.push("unable to comply, " + p.id);
         }
     }
+}
+
+function cmd_readback() {
+    var str = "";
+    for (var i = 1; i < current_cmd.length; i = i + 1) {
+        if (i % 2 == 0) {
+            str = str + current_cmd[i] + ", ";
+        } else {
+            str = str + CMD_STRINGS[String.fromCharCode(current_cmd[i])] + " ";
+        }
+    }
+    str += current_cmd[0];
+    return str;
 }
 
 function cmd_string() {
@@ -491,6 +497,15 @@ function handleKeypress(e) {
         case KEY_SPACE:
             suppress = true;
             break;
+        case TIME_UP:
+            acceleration = Math.min(10, acceleration + 1);
+            suppress = true;
+            break;
+        case TIME_DOWN:
+            acceleration = Math.max(1, acceleration - 1);
+            suppress = true;
+            break;
+
         default:
            break;
     }
@@ -514,7 +529,8 @@ var planes = [];
 var lookup_planes = {};
 var canvas;
 var context;
-var num_landed = 0;
+var score = 0;
+var msgs = [];
 
 function onload() {
     init();
@@ -562,7 +578,7 @@ function step() {
                 var d = dist(planes[i].x, planes[i].y, planes[k].x, planes[k].y);
                 var da = Math.abs(planes[i].alt - planes[k].alt);
                 if (d < .2 && da < 100) {
-                    console.log("MID AIR COLLISION: " + planes[i].id + " - " + planes[k].id);
+                    msgs.push("MID AIR COLLISION: " + planes[i].id + " - " + planes[k].id);
                     crashed = true;
                     // CRASH
                 } else if (d < 3. && da <= 1000) {
@@ -588,11 +604,11 @@ function step() {
                 }
                 if (landed) {
                     // SCORE
-                    num_landed += 1;
-                    console.log("LANDED " + planes[i].id);
+                    score += 1;
+                    msgs.push("LANDED " + planes[i].id);
                 } else {
                     // CRASH
-                    console.log("FLIGHT INTO GROUND " + planes[i].id);
+                    msgs.push("FLIGHT INTO GROUND " + planes[i].id);
                     crashed = true;
                 }
             }
@@ -628,6 +644,7 @@ function draw() {
     }
 
     drawtextarea();
+    drawtoptextarea();
 }
 
 function drawworld() {
@@ -705,11 +722,23 @@ function draw_airport(a) {
     context.lineWidth = 1;
 }
 
+function drawtoptextarea() {
+    context.fillStyle="#00ff00";
+    context.fillText("Score: " + score, 10, 15);
+    context.fillText("Time acceleration: " + acceleration + "x", 10, 25);
+    
+}
+
+
 function drawtextarea() {
     context.fillStyle="#000000";
-    context.fillRect(0, canvas.height-15, canvas.width, 15);
+    context.fillRect(0, canvas.height-5 - 10*6, canvas.width, 5 + 10*6);
     context.fillStyle="#00ff00";
     context.fillText(": " + cmd_string() + "_", 10, canvas.height-5);
+
+    for (var i = 1; i <= 5 && i <= msgs.length; i += 1) {
+        context.fillText("* " + msgs[msgs.length-i], 10, canvas.height-5-10*i);
+    }
 }
 
 function draw_vor(v) {
