@@ -138,7 +138,13 @@ function cmd_ils(plane, args) {
             args.established = true;
         }
     } else {
-        plane.target_dir = ang_to_rwy;
+        var dd = args.t.dir - ang_to_rwy;
+        if (dd > 180.)
+            dd = dd - 360;
+        else if (dd < -180.)
+            dd = 360 + dd;
+
+        plane.target_dir = ang_to_rwy - dd;
 
         var d = dist(plane.x,plane.y,args.t.x,args.t.y);
         plane.target_alt = Math.min(plane.target_alt, d*300);
@@ -171,7 +177,7 @@ function cmd(_type, _args) {
 /*
  * let each pixel denote 1/10 nm
  */
-function plane(_id,_x,_y,_alt,_dir,_speed,_cmds) {
+function plane(_id,_x,_y,_alt,_dir,_speed,_cmds,_airport) {
     this.id = _id;
     this.x = _x;
     this.y = _y;
@@ -190,6 +196,8 @@ function plane(_id,_x,_y,_alt,_dir,_speed,_cmds) {
 
     this.state = STATE_NORMAL;
     this.alarm = false;
+
+    this.target_airport = _airport;
 
     /* dt is time difference in ss */
     this.updatepos = function(dt) {
@@ -219,7 +227,7 @@ function plane(_id,_x,_y,_alt,_dir,_speed,_cmds) {
             this.alt = this.alt + sdalt * Math.min(sdalt*dalt, (this.fpm/60.) * dt);
         }
 
-        /* update the plane's direction */
+        /* update the plane's dkrection */
         var ddir = this.target_dir - this.dir;
         if (Math.abs(ddir) > eps) {
             var sddir = ddir / Math.abs(ddir);
@@ -377,7 +385,7 @@ function commit_cmd() {
                             var rwy = ap.lookup_rwy(rwyid);
                             if (rwy && rwy.ils) {
                                 valid = true;
-                                cmds.push(new cmd(CMD_ILS, {t:rwy}));
+                                cmds.push(new cmd(CMD_ILS, {t:rwy,airport:airportid}));
                             }
                         }
                         break;
@@ -549,11 +557,13 @@ function init() {
                 [
                 new cmd(CMD_DIRECT, lookup_navaid["KOGAV"]),
                 new cmd(CMD_DIRECT, lookup_navaid["BALVI"]),
-                new cmd(CMD_HDG,180)]));
+                new cmd(CMD_HDG,180)],
+                "ESOW"));
     planes.push(new plane('QWE123', 110.0,45.0,10000,180,250, 
                 [
                 new cmd(CMD_DIRECT, lookup_navaid["XILAN"]),
-                new cmd(CMD_DIRECT, lookup_navaid["TEB"])]));
+                new cmd(CMD_DIRECT, lookup_navaid["TEB"])],
+                "ESSB"));
     
     for (var i = 0; i < planes.length; i = i + 1) {
         lookup_planes[planes[i].id] = planes[i];
@@ -598,13 +608,17 @@ function step() {
 
                     if (planes[i].speed <= 150 &&
                         d < .1 &&
-                        dd < 5.) {
+                        dd < 6.) {
                         landed = true;
                     }
                 }
                 if (landed) {
                     // SCORE
-                    score += 1;
+                    if (planes[i].cmds[0].args.airport == planes[i].target_airport) {
+                        score += 1;
+                    } else {
+                        score -= 1;
+                    }
                     msgs.push("LANDED " + planes[i].id);
                 } else {
                     // CRASH
@@ -830,10 +844,11 @@ function drawplane(p) {
     context.lineTo(lx2,ly2);
     context.stroke();
 
-    var txt = p.alt_string();
+    var alttxt = p.alt_string();
+    var spddst = "" + p.speed + " " + p.target_airport;
     
-    var tw = context.measureText(txt).width;
-    var th = context.measureText(txt).height;
+    var tw = Math.max(context.measureText(alttxt).width, context.measureText(spddst).width);
+    var th = context.measureText(alttxt).height;
     var tx,ty;
 
     if (p.dir < 180) {
@@ -844,6 +859,6 @@ function drawplane(p) {
     ty = y;
 
     context.fillText(p.id, tx, ty-11);
-    context.fillText(txt, tx, ty);
-    context.fillText(""+p.speed, tx, ty+11);
+    context.fillText(alttxt, tx, ty);
+    context.fillText(spddst, tx, ty+11);
 }
