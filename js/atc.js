@@ -588,7 +588,7 @@ function step() {
             }
             var landed = false;
             if (planes[i].alt < 25.) {
-                if (planes[i].cmds[0].type === CMD_ILS) {
+                if (planes[i].cmds.length > 0 && planes[i].cmds[0].type === CMD_ILS) {
                     var t = planes[i].cmds[0].args.t;
                     var dd = Math.abs(planes[i].dir - t.dir);
                     if (dd > 180.) dd = 360 - dd;
