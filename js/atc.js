@@ -15,6 +15,59 @@ var BG = "#000",
     AIRPORT_COLOR = "#7f7f7f",
     TMA_BOUNDARY_COLOR = "#3f3f3f";
 
+var HEIGHT = 0, WIDTH = 0;
+
+var airlines = ["SAS","BAW","BLF","FIN","KLM","DLH","NAX"];
+var used_plane_numbers = {};
+
+function generate_callsign() {
+    var callsign = "" + airlines[Math.floor(Math.random()*airlines.length)];
+    do {
+        var num = Math.floor(Math.random()*999)+1;
+    } while (used_plane_numbers[num] !== undefined);
+
+    used_plane_numbers[num] = 1;
+
+    if (num < 100) callsign += "0";
+    if (num < 10) callsign += "0";
+    callsign += num;
+    return callsign;
+}
+
+var start_navaids = ["TRS","HMR","BABAP","XILAN","KOGAV","DKR"];
+var start_directions = ["S","N","E","E","W","W"];
+
+function generate_start_location() {
+    var key = Math.floor(Math.random()*start_navaids.length);
+    var coord = {x:0,y:0};
+    var d = (Math.random() - .5) * (2./3.);
+    var naid = lookup_navaid[start_navaids[key]];
+    switch (start_directions[key]) {
+        case "S":
+            coord.y = HEIGHT;
+            coord.x = naid.x + d*WIDTH;
+            break;
+        case "N":
+            coord.y = 0;
+            coord.x = naid.x + d*WIDTH;
+            break;
+        case "W":
+            coord.x = 0;
+            coord.y = naid.y + d*HEIGHT;
+            break;
+        case "E":
+            coord.x = WIDTH;
+            coord.y = naid.x + d*HEIGHT;
+            break;
+    }
+    
+
+    var ang = Math.round(Math.atan2(naid.y-coord.y, naid.x-coord.x)*180./Math.PI);
+    ang = (ang + 360 + 90) % 360;   // normalize the angle and turn it into 
+
+    return {target:start_navaids[key],dir:ang,loc:coord};
+}
+
 var nmPerPixel = 1/5.;
 
 var acceleration = 1;
@@ -545,14 +598,28 @@ function onload() {
     step();
 }
 
+function add_plane() {
+    var index = planes.length;
+    var apname = airports[Math.floor(Math.random()*airports.length)].id;
+    var callsign = generate_callsign();
+    var sloc = generate_start_location();
+    planes.push(new plane(callsign,
+                sloc.loc.x, sloc.loc.y, 10000, sloc.dir, 250,
+                [new cmd(CMD_DIRECT, lookup_navaid[sloc.target])],
+                apname));
+    lookup_planes[callsign] = planes[index];
+}
+
 function init() {
     canvas = document.getElementById("game");
+    HEIGHT = canvas.height*nmPerPixel;
+    WIDTH = canvas.width*nmPerPixel;
     context = canvas.getContext('2d');
 
     for (var i = 0; i < navaids.length; i = i + 1) {
         lookup_navaid[navaids[i].id] = navaids[i];
     }
-    
+    /*
     planes.push(new plane('ASD123', 15.0,15.0,10000,180,250, 
                 [
                 new cmd(CMD_DIRECT, lookup_navaid["KOGAV"]),
@@ -567,15 +634,29 @@ function init() {
     
     for (var i = 0; i < planes.length; i = i + 1) {
         lookup_planes[planes[i].id] = planes[i];
-    }
+    }*/
 
     for (var i = 0; i < airports.length; i = i + 1) {
         lookup_airports[airports[i].id] = airports[i];
     }
 }
 
+var base_num_planes = 1;
+var timer = 0;
+
 function step() {
     for (var j = 0; j < acceleration; j = j + 1) {
+
+        // add planes if necessary
+        if (planes.length == 0 || --timer <= 0) {
+            var n_planes = base_num_planes + Math.floor(base_num_planes*Math.random());
+            for (var i = 0; i < n_planes; ++i)
+                add_plane();
+
+            base_num_planes *= 1.1;
+            timer = 300;
+        }
+
         for (var i = 0; i < planes.length; i = i + 1) {
             planes[i].updatepos(1000 / 1000.);
         }
